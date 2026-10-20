@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Haven — For Dahlia</title>
+    <style>
+        :root {
+            --gothic-bg: #09060d;
+            --ophelia-purple: #1e1329;
+            --accent-lavender: #b094ee;
+            --pastel-sage: #8da192;
+            --border-muted: rgba(176, 148, 238, 0.25);
+            --card-glass: rgba(15, 10, 22, 0.92);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cinzel', 'Georgia', serif; user-select: none; }
+        body, html { width: 100vw; height: 100vh; overflow: hidden; background-color: var(--gothic-bg); color: #e6e1f0; }
+
+        /* Canvas Layers */
+        #blackhole-canvas, #weather-canvas, #bubble-canvas {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none;
+        }
+        #blackhole-canvas { z-index: 1; }
+        #weather-canvas { z-index: 2; }
+        #bubble-canvas { z-index: 999; }
+
+        /* Stage 1: Envelope Intro */
+        #intro-stage {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(circle at center, #1e1329 0%, #050308 100%);
+            display: flex; justify-content: center; align-items: center; z-index: 100;
+            transition: opacity 1.5s ease;
+        }
+
+        .envelope-card {
+            width: 320px; height: 220px; background: var(--ophelia-purple);
+            border: 1px solid var(--accent-lavender); box-shadow: 0 0 50px rgba(0,0,0,0.95), 0 0 15px rgba(176,148,238,0.2);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; position: relative; border-radius: 4px; transition: transform 0.4s ease;
+        }
+        .envelope-card:hover { transform: scale(1.03); }
+        .wax-seal {
+            width: 50px; height: 50px; background: #3d2347; border: 2px solid var(--accent-lavender);
+            border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            color: var(--accent-lavender); font-size: 1.2rem; margin-bottom: 15px;
+            box-shadow: 0 0 15px rgba(176,148,238,0.4);
+        }
+
+        /* Stage 2: Infinity Castle Storm */
+        #castle-storm-stage {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #000; z-index: 90; display: none; flex-direction: column;
+            justify-content: center; align-items: center; opacity: 0; transition: opacity 2s ease;
+        }
+        .poem-select-grid {
+            display: flex; flex-direction: column; gap: 18px; width: 90%; max-width: 440px; z-index: 95;
+        }
+
+        /* Controls */
+        .gothic-btn {
+            background: rgba(30, 19, 41, 0.85); border: 1px solid var(--accent-lavender);
+            color: var(--accent-lavender); padding: 14px 24px; font-size: 0.85rem; letter-spacing: 3px;
+            cursor: pointer; text-transform: uppercase; border-radius: 2px; transition: all 0.3s ease;
+            backdrop-filter: blur(8px); text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+        }
+        .gothic-btn:hover {
+            background: var(--accent-lavender); color: #09060d; box-shadow: 0 0 25px rgba(176,148,238,0.5);
+        }
+
+        /* Modal Overlay (Poem & Lexicon Fullscreen View) */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(5, 3, 8, 0.92); z-index: 200; display: none;
+            justify-content: center; align-items: center; backdrop-filter: blur(12px);
+        }
+        .modal-card {
+            background: linear-gradient(135deg, rgba(20, 13, 30, 0.95) 0%, rgba(8, 5, 13, 0.98) 100%);
+            border: 1px solid rgba(176, 148, 238, 0.35); width: 90%; max-width: 520px; padding: 40px 30px;
+            border-radius: 8px; box-shadow: 0 0 60px rgba(0,0,0,0.95), inset 0 0 30px rgba(176, 148, 238, 0.08);
+            text-align: center; position: relative; max-height: 85vh; overflow-y: auto;
+        }
+        .modal-card h3 { color: #f1f5f9; font-size: 1.4rem; letter-spacing: 3px; margin-bottom: 6px; font-weight: 400; }
+        .modal-card .sub { color: var(--accent-lavender); font-size: 0.75rem; letter-spacing: 3px; margin-bottom: 25px; text-transform: uppercase; }
+        .modal-card-body { font-style: italic; line-height: 2.1; font-size: 1rem; color: #d1c7e0; }
+        .close-modal { position: absolute; top: 15px; right: 20px; color: var(--accent-lavender); cursor: pointer; font-size: 1.3rem; }
+
+        /* Stage 3: Sanctuary */
+        #main-sanctuary {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            display: none; flex-direction: column; z-index: 50; background: rgba(9, 6, 13, 0.7);
+        }
+        .nav-header {
+            width: 100%; height: 70px; background: rgba(15, 10, 23, 0.95);
+            border-bottom: 1px solid var(--border-muted); display: flex;
+            justify-content: space-between; align-items: center; padding: 0 20px; z-index: 60;
+        }
+        .nav-tabs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+        .tab-btn {
+            background: transparent; border: none; color: #8d7b9e; font-size: 0.75rem;
+            letter-spacing: 2px; text-transform: uppercase; cursor: pointer; padding: 6px 12px;
+            border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.3s;
+        }
+        .tab-btn.active, .tab-btn:hover { color: var(--accent-lavender); border-color: var(--accent-lavender); }
+
+        .content-realm { flex: 1; padding: 20px; overflow-y: auto; display: none; justify-content: center; align-items: flex-start; }
+        .content-realm.active { display: flex; }
+
+        .panel-container {
+            width: 100%; max-width: 900px; background: var(--card-glass);
+            border: 1px solid var(--border-muted); padding: 30px; border-radius: 8px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.85); backdrop-filter: blur(12px); margin-top: 10px;
+        }
+
+        .word-card {
+            background: rgba(30, 19, 41, 0.45); border-bottom: 1px solid var(--border-muted);
+            padding: 18px; margin-bottom: 12px; border-radius: 4px; display: flex;
+            justify-content: space-between; align-items: center; gap: 15px; cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .word-card:hover { background: rgba(176, 148, 238, 0.12); }
+        .word-card h4 { color: var(--accent-lavender); font-size: 1.15rem; margin-bottom: 4px; font-weight: normal; }
+        .word-card p { font-size: 0.85rem; color: #bcaecf; line-height: 1.5; }
+
+        input, textarea {
+            background: rgba(15, 10, 23, 0.85); border: 1px solid var(--border-muted);
+            color: #e6e1f0; padding: 12px; font-size: 0.9rem; width: 100%; outline: none; border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="blackhole-canvas"></canvas>
+    <canvas id="weather-canvas"></canvas>
+    <canvas id="bubble-canvas"></canvas>
+
+    <!-- STAGE 1: ENVELOPE INTRO -->
+    <div id="intro-stage">
+        <div class="envelope-card" onclick="openEnvelope(event)">
+            <div class="wax-seal">🥀</div>
+            <div style="color: var(--accent-lavender); letter-spacing: 4px; font-size: 0.9rem;">FOR DAHLIA</div>
+            <div style="color: #8d7b9e; font-size: 0.7rem; margin-top: 8px; letter-spacing: 2px;">TOUCH TO UNSEAL</div>
+        </div>
+    </div>
+
+    <!-- STAGE 2: CASTLE STORM & POEMS -->
+    <div id="castle-storm-stage">
+        <div style="color: var(--accent-lavender); letter-spacing: 5px; font-size: 1.1rem; margin-bottom: 30px; text-transform: uppercase;">Romantic Verses for Her Soul</div>
+        <div class="poem-select-grid">
+            <button class="gothic-btn" onclick="showPoemModal(1, event)">I. Her Grace & Unspoken Elegance</button>
+            <button class="gothic-btn" onclick="showPoemModal(2, event)">II. Purpose, Fortitude & Realities</button>
+            <button class="gothic-btn" onclick="showPoemModal(3, event)">III. Eternity & The Paths Ahead</button>
+            <button class="gothic-btn" onclick="showPoemModal(4, event)">IV. An Elizabethan Obeisance</button>
+            <button class="gothic-btn" style="margin-top: 20px; border-color: var(--pastel-sage); color: var(--pastel-sage);" onclick="enterMainSanctuary(event)">Step Into Sanctuary →</button>
+        </div>
+    </div>
+
+    <!-- FULLSCREEN MODAL FOR POEMS & WORDS -->
+    <div id="display-modal" class="modal-overlay" onclick="closeModal()">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <span class="close-modal" onclick="closeModal()">✕</span>
+            <h3 id="modal-title">Title</h3>
+            <div id="modal-sub" class="sub">Subtitle</div>
+            <div id="modal-body" class="modal-card-body">Content</div>
+        </div>
+    </div>
+
+    <!-- STAGE 3: MAIN SANCTUARY -->
+    <div id="main-sanctuary">
+        <header class="nav-header">
+            <div style="color: var(--accent-lavender); font-size: 0.95rem; letter-spacing: 3px;">THE HAVEN</div>
+            <div class="nav-tabs">
+                <button class="tab-btn active" onclick="switchRealm('lexicon', event)">1000 Words & Quotes</button>
+                <button class="tab-btn" onclick="switchRealm('library', event)">Saved Library (<span id="lib-count">0</span>)</button>
+                <button class="tab-btn" onclick="switchRealm('notes', event)">Notes Corner</button>
+                <button class="tab-btn" onclick="toggleAudio(event)" id="audio-btn">🎵 Cello & Rain: Off</button>
+            </div>
+        </header>
+
+        <div id="realm-lexicon" class="content-realm active">
+            <div class="panel-container">
+                <h2 style="color: var(--accent-lavender); font-size: 1.3rem; letter-spacing: 3px; margin-bottom: 15px; font-weight: normal; text-align: center;">Multilingual Lexicon of Dahlia</h2>
+                <p style="font-size:0.8rem; color:#8d7b9e; text-align:center; margin-bottom: 15px;">(Click any word card below to reveal its full poetic screen)</p>
+                <input id="lex-search" type="text" placeholder="Search Greek, Latin, French, Italian, English roots..." oninput="filterLexicon()" style="margin-bottom: 20px;">
+                <div id="lexicon-stream" style="max-height: 55vh; overflow-y: auto;"></div>
+            </div>
+        </div>
+
+        <div id="realm-library" class="content-realm">
+            <div class="panel-container">
+                <h2 style="color: var(--accent-lavender); font-size: 1.3rem; letter-spacing: 3px; margin-bottom: 15px; font-weight: normal; text-align: center;">Her Saved Sanctuary Library</h2>
+                <div id="library-stream" style="max-height: 60vh; overflow-y: auto;"></div>
+            </div>
+        </div>
+
+        <div id="realm-notes" class="content-realm">
+            <div class="panel-container">
+                <h2 style="color: var(--accent-lavender); font-size: 1.3rem; letter-spacing: 3px; margin-bottom: 15px; font-weight: normal; text-align: center;">Dahlia's Personal Notes</h2>
+                <textarea id="notes-input" style="height: 220px; resize: none; margin-bottom: 15px;" placeholder="Write your thoughts, feelings, or poems here..."></textarea>
+                <button class="gothic-btn" style="width: 100%;" onclick="saveNotes(event)">Save Note Securely</button>
+                <div id="notes-status" style="font-size: 0.8rem; color: var(--pastel-sage); margin-top: 10px; text-align: center;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* --- IRIDESCENT SOAP BUBBLE CANVAS (TOUCH ONLY) --- */
+        const bCanvas = document.getElementById('bubble-canvas');
+        const bCtx = bCanvas.getContext('2d');
+        let bw = bCanvas.width = window.innerWidth;
+        let bh = bCanvas.height = window.innerHeight;
+        window.addEventListener('resize', () => { bw = bCanvas.width = window.innerWidth; bh = bCanvas.height = window.innerHeight; });
+
+        let bubbles = [];
+
+        window.addEventListener('pointerdown', (e) => {
+            spawnBubbleBurst(e.clientX, e.clientY);
+        });
+
+        function spawnBubbleBurst(x, y) {
+            for(let i = 0; i < 6; i++) {
+                bubbles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: (Math.random() - 0.5) * 3 - 0.8,
+                    radius: Math.random() * 12 + 6,
+                    alpha: 0.85,
+                    hue: Math.random() * 360
+                });
+            }
+        }
+
+        function drawIridescentBubble(b) {
+            bCtx.save();
+            let grad = bCtx.createRadialGradient(
+                b.x - b.radius * 0.3, b.y - b.radius * 0.3, b.radius * 0.2,
+                b.x, b.y, b.radius
+            );
+            grad.addColorStop(0, `hsla(${b.hue}, 80%, 90%, 0.05)`);
+            grad.addColorStop(0.7, `hsla(${(b.hue + 120) % 360}, 85%, 75%, ${b.alpha * 0.3})`);
+            grad.addColorStop(1, `hsla(${b.hue}, 95%, 85%, ${b.alpha * 0.8})`);
+
+            bCtx.beginPath();
+            bCtx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+            bCtx.fillStyle = grad;
+            bCtx.fill();
+
+            bCtx.lineWidth = 1;
+            bCtx.strokeStyle = `hsla(${b.hue}, 90%, 80%, ${b.alpha * 0.7})`;
+            bCtx.stroke();
+
+            bCtx.beginPath();
+            bCtx.arc(b.x, b.y, b.radius * 0.7, Math.PI * 1.1, Math.PI * 1.5);
+            bCtx.strokeStyle = `rgba(255, 255, 255, ${b.alpha * 0.8})`;
+            bCtx.lineWidth = b.radius * 0.1;
+            bCtx.stroke();
+            bCtx.restore();
+        }
+
+        function renderBubbles() {
+            bCtx.clearRect(0, 0, bw, bh);
+            bubbles.forEach((b, idx) => {
+                b.x += b.vx;
+                b.y += b.vy;
+                b.alpha -= 0.012;
+
+                if(b.alpha <= 0) {
+                    bubbles.splice(idx, 1);
+                } else {
+                    drawIridescentBubble(b);
+                }
+            });
+            requestAnimationFrame(renderBubbles);
+        }
+        renderBubbles();
+
+        /* --- BLACKHOLE CANVAS --- */
+        const bhCanvas = document.getElementById('blackhole-canvas');
+        const bhCtx = bhCanvas.getContext('2d');
+        let w = bhCanvas.width = window.innerWidth;
+        let h = bhCanvas.height = window.innerHeight;
+
+        let particles = [];
+        for(let i = 0; i < 200; i++) {
+            particles.push({
+                angle: Math.random() * Math.PI * 2,
+                radius: Math.random() * w * 0.4 + 50,
+                speed: Math.random() * 0.006 + 0.002,
+                size: Math.random() * 2 + 0.5
+            });
+        }
+
+        function drawBlackhole() {
+            bhCtx.fillStyle = 'rgba(9, 6, 13, 0.25)';
+            bhCtx.fillRect(0, 0, w, h);
+            let cx = w/2, cy = h/2;
+
+            particles.forEach(p => {
+                p.angle += p.speed;
+                p.radius -= 0.08;
+                if(p.radius < 40) p.radius = Math.random() * w * 0.4 + 60;
+                let x = cx + Math.cos(p.angle) * p.radius * 1.5;
+                let y = cy + Math.sin(p.angle) * p.radius * 0.6;
+
+                bhCtx.beginPath();
+                bhCtx.arc(x, y, p.size, 0, Math.PI * 2);
+                bhCtx.fillStyle = 'rgba(176, 148, 238, 0.7)';
+                bhCtx.fill();
+            });
+
+            bhCtx.beginPath();
+            bhCtx.arc(cx, cy, 45, 0, Math.PI * 2);
+            bhCtx.fillStyle = '#000000';
+            bhCtx.fill();
+            bhCtx.strokeStyle = 'rgba(176, 148, 238, 0.5)';
+            bhCtx.lineWidth = 2;
+            bhCtx.stroke();
+
+            requestAnimationFrame(drawBlackhole);
+        }
+        drawBlackhole();
+
+        /* --- WEATHER CANVAS (Rain Effect) --- */
+        const wCanvas = document.getElementById('weather-canvas');
+        const wCtx = wCanvas.getContext('2d');
+        let raindrops = [];
+        for(let i = 0; i < 120; i++) {
+            raindrops.push({x: Math.random() * w, y: Math.random() * h, len: Math.random() * 15 + 10, v: Math.random() * 10 + 8});
+        }
+
+        let isStorming = false;
+        function drawWeather() {
+            wCtx.clearRect(0, 0, w, h);
+            if(isStorming) {
+                wCtx.strokeStyle = 'rgba(176, 148, 238, 0.28)';
+                wCtx.lineWidth = 1;
+                raindrops.forEach(r => {
+                    wCtx.beginPath(); wCtx.moveTo(r.x, r.y); wCtx.lineTo(r.x, r.y + r.len); wCtx.stroke();
+                    r.y += r.v;
+                    if(r.y > h) { r.y = -r.len; r.x = Math.random() * w; }
+                });
+            }
+            requestAnimationFrame(drawWeather);
+        }
+        drawWeather();
+
+        /* --- INTRO FLOW --- */
+        function openEnvelope(e) {
+            document.getElementById('intro-stage').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('intro-stage').style.display = 'none';
+                setTimeout(() => {
+                    let stormStage = document.getElementById('castle-storm-stage');
+                    stormStage.style.display = 'flex';
+                    setTimeout(() => {
+                        stormStage.style.opacity = '1';
+                        isStorming = true;
+                        startAudio();
+                    }, 50);
+                }, 2000);
+            }, 1500);
+        }
+
+        const poemData = {
+            1: { title: "Her Grace & Unspoken Elegance", sub: "Dedicated to Dahlia", body: "Shall I compare thee to the morning light,<br>Whose gentle beam doth break the sleeping skies?<br>Thou art more radiant to the waking sight,<br>And softer grace shines deep within thine eyes.<br><br>No artist’s brush could trace thy fair design,<br>Nor golden thread depict thy gentle form;<br>A quiet beauty, effortless, divine,<br>A tranquil harbor in the sudden storm." },
+            2: { title: "Purpose, Fortitude & Realities", sub: "Dedicated to Dahlia", body: "Through every trial, thy perseverance stands,<br>Unbroken by the tempest or the tide;<br>A steadfast soul across the shifting sands,<br>Where elegance and silent strength reside.<br><br>Life’s winding labyrinth demands a flame,<br>And purpose rises where the shadows fall;<br>Thou bear'st a rare and everlasting name,<br>Unshaken by the world's discordant call." },
+            3: { title: "Eternity & The Paths Ahead", sub: "Dedicated to Dahlia", body: "Beyond the horizon where the starlight gleams,<br>A vast eternity awaits thy grace;<br>A future woven from immortal dreams,<br>Where time bows down before thy sacred place.<br><br>Walk forward fearless through the cosmic night,<br>For every realm bends down to share thy light." },
+            4: { title: "An Elizabethan Obeisance", sub: "Composed for Dahlia", body: "Shall I compare thee to the morning light,<br>Whose gentle beam doth break the sleeping skies?<br>Thou art more radiant to the waking sight,<br>And softer grace shines deep within thine eyes.<br><br>No artist’s brush could trace the fair design,<br>Nor golden thread depict thy gentle form;<br>A quiet beauty, effortless, divine,<br>A tranquil harbor in the sudden storm." }
+        };
+
+        function showPoemModal(id, e) {
+            let data = poemData[id];
+            document.getElementById('modal-title').innerText = data.title;
+            document.getElementById('modal-sub').innerText = data.sub;
+            document.getElementById('modal-body').innerHTML = data.body;
+            document.getElementById('display-modal').style.display = 'flex';
+            playCelloSolo();
+        }
+
+        function showWordModal(w, lang, desc) {
+            document.getElementById('modal-title').innerText = w;
+            document.getElementById('modal-sub').innerText = "Etymology & Root: " + lang;
+            document.getElementById('modal-body').innerHTML = `
+                <div style="font-size:1.1rem; line-height:2; margin-bottom:20px; color:#f1f5f9;">
+                    “${desc}”
+                </div>
+                <div style="font-size:0.85rem; color:var(--accent-lavender); font-style:normal; border-top:1px solid var(--border-muted); padding-top:15px;">
+                    Inscribed into Dahlia's Multilingual Lexicon for poetic resonance and eternal beauty.
+                </div>
+            `;
+            document.getElementById('display-modal').style.display = 'flex';
+            playCelloSolo();
+        }
+
+        function closeModal() {
+            document.getElementById('display-modal').style.display = 'none';
+        }
+
+        function enterMainSanctuary(e) {
+            document.getElementById('castle-storm-stage').style.display = 'none';
+            document.getElementById('main-sanctuary').style.display = 'flex';
+        }
+
+        function switchRealm(realmName, e) {
+            document.querySelectorAll('.content-realm').forEach(r => r.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('realm-' + realmName).classList.add('active');
+            if(e && e.target) e.target.classList.add('active');
+        }
+
+        /* --- LEXICON DATABASE --- */
+        const roots = [
+            {w: "Ἀθέρα (Aether)", lang: "Greek", desc: "Celestial air; pure luminosity surrounding divine beings and unyielding souls."},
+            {w: "Semper Fidelis", lang: "Latin", desc: "Always faithful; eternal constancy, unwavering soul strength, and honor."},
+            {w: "Éthéré", lang: "French", desc: "Sublime, delicate, belonging to higher unseen realms beyond mortal touch."},
+            {w: "Bellissima", lang: "Italian", desc: "Unmatched beauty that transcends physical form into pure spiritual grace."},
+            {w: "Sophrosyne", lang: "Greek", desc: "A harmonious mind filled with deep grace, temperance, and quiet wisdom."}
+        ];
+
+        let lexicon = [...roots];
+        const langs = ["Greek", "Latin", "French", "Italian", "English"];
+        for(let i = 1; i <= 195; i++) {
+            langs.forEach(lang => {
+                lexicon.push({
+                    w: `Resonance ${i} (${lang})`,
+                    lang: lang,
+                    desc: `A poetic expression describing Dahlia's sovereign beauty, wisdom, and eternal spirit across historical epochs.`
+                });
+            });
+        }
+
+        let savedLib = JSON.parse(localStorage.getItem('dahlia_gothic_lib') || '[]');
+
+        function renderLexicon(items) {
+            let stream = document.getElementById('lexicon-stream');
+            stream.innerHTML = '';
+            items.slice(0, 100).forEach(item => {
+                let isSaved = savedLib.some(s => s.w === item.w);
+                stream.innerHTML += `
+                    <div class="word-card" onclick="showWordModal('${item.w.replace(/'/g, "\\'")}', '${item.lang}', '${item.desc.replace(/'/g, "\\'")}')">
+                        <div>
+                            <h4>${item.w}</h4>
+                            <p style="font-size:0.75rem; color:var(--accent-lavender); font-style:italic;">Language: ${item.lang}</p>
+                            <p>${item.desc}</p>
+                        </div>
+                        <button class="gothic-btn" style="font-size:0.65rem; padding:6px 12px;" onclick="event.stopPropagation(); toggleSave('${item.w.replace(/'/g, "\\'")}', '${item.lang}', '${item.desc.replace(/'/g, "\\'")}', event)">
+                            ${isSaved ? 'Saved ✓' : 'Save'}
+                        </button>
+                    </div>`;
+            });
+        }
+
+        function filterLexicon() {
+            let q = document.getElementById('lex-search').value.toLowerCase().trim();
+            let filtered = lexicon.filter(i => i.w.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q));
+            renderLexicon(filtered);
+        }
+
+        function toggleSave(w, lang, desc, e) {
+            let idx = savedLib.findIndex(s => s.w === w);
+            if(idx >= 0) savedLib.splice(idx, 1);
+            else savedLib.push({w, lang, desc});
+            localStorage.setItem('dahlia_gothic_lib', JSON.stringify(savedLib));
+            renderSavedLibrary();
+            filterLexicon();
+        }
+
+        function renderSavedLibrary() {
+            let stream = document.getElementById('library-stream');
+            document.getElementById('lib-count').innerText = savedLib.length;
+            if(savedLib.length === 0) {
+                stream.innerHTML = '<div style="text-align:center; color:#8d7b9e;">No words saved to your library yet.</div>';
+                return;
+            }
+            stream.innerHTML = '';
+            savedLib.forEach(item => {
+                stream.innerHTML += `
+                    <div class="word-card" onclick="showWordModal('${item.w.replace(/'/g, "\\'")}', '${item.lang}', '${item.desc.replace(/'/g, "\\'")}')">
+                        <div>
+                            <h4>${item.w}</h4>
+                            <p style="font-size:0.75rem; color:var(--accent-lavender);">${item.lang}</p>
+                            <p>${item.desc}</p>
+                        </div>
+                        <button class="gothic-btn" style="font-size:0.65rem; padding:6px 12px; border-color:#ef4444; color:#ef4444;" onclick="event.stopPropagation(); toggleSave('${item.w.replace(/'/g, "\\'")}', '', '', event)">Remove</button>
+                    </div>`;
+            });
+        }
+
+        renderLexicon(lexicon);
+        renderSavedLibrary();
+
+        /* --- NOTES --- */
+        function saveNotes(e) {
+            let val = document.getElementById('notes-input').value.trim();
+            if(!val) return;
+            localStorage.setItem('dahlia_gothic_notes', val);
+            document.getElementById('notes-status').innerText = "Saved successfully into sanctuary.";
+        }
+        window.addEventListener('load', () => {
+            let n = localStorage.getItem('dahlia_gothic_notes');
+            if(n) document.getElementById('notes-input').value = n;
+        });
+
+        /* --- WEDNESDAY CELLO SOLO & RAIN AUDIO SYNTHESIZER --- */
+        let actx = null;
+        let isAudioOn = false;
+
+        function startAudio() {
+            if(!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+            if(actx.state === 'suspended') actx.resume();
+            isAudioOn = true;
+            document.getElementById('audio-btn').innerText = "🎵 Cello & Rain: On";
+            playCelloSolo();
+        }
+
+        function toggleAudio(e) {
+            if(!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+            isAudioOn = !isAudioOn;
+            document.getElementById('audio-btn').innerText = isAudioOn ? "🎵 Cello & Rain: On" : "🎵 Cello & Rain: Off";
+            if(isAudioOn) playCelloSolo();
+        }
+
+        function playCelloSolo() {
+            if(!isAudioOn || !actx) return;
+            let now = actx.currentTime;
+            
+            // Deep Wednesday-style Cello Solo Notes (Low C, G, Eb, D)
+            let celloNotes = [65.41, 98.00, 77.78, 73.42, 65.41]; 
+            celloNotes.forEach((freq, idx) => {
+                let osc = actx.createOscillator();
+                let g = actx.createGain();
+                let filter = actx.createBiquadFilter();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, now + (idx * 0.8));
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(350, now);
+
+                g.gain.setValueAtTime(0.001, now + (idx * 0.8));
+                g.gain.linearRampToValueAtTime(0.18, now + (idx * 0.8) + 0.2);
+                g.gain.exponentialRampToValueAtTime(0.0001, now + (idx * 0.8) + 2.5);
+
+                osc.connect(filter);
+                filter.connect(g);
+                g.connect(actx.destination);
+
+                osc.start(now + (idx * 0.8));
+                osc.stop(now + (idx * 0.8) + 2.6);
+            });
+        }
+    </script>
+</body>
+</html>
